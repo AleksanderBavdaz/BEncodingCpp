@@ -23,29 +23,21 @@ public:
 		DICTIONARY
 	};
 
-	BValue(const std::string &str)
-	{
-		m_Str = str;
-		m_Type = STRING;
-	}
+	BValue(const std::string &str) :
+		m_Type(STRING),
+		m_Str(str) { }
 
-	BValue(long long i)
-	{
-		m_Int = i;
-		m_Type = INTEGER;
-	}
+	BValue(long long i) :
+		m_Type(INTEGER),
+		m_Int(i) { }
 
-	BValue(const ListType &list)
-	{
-		m_List = list;
-		m_Type = LIST;
-	}
+	BValue(const ListType &list) :
+		m_Type(LIST),
+		m_List(list) { }
 
-	BValue(const DictType &dict)
-	{
-		m_Dict = dict;
-		m_Type = DICTIONARY;
-	}
+	BValue(const DictType &dict) :
+		m_Type(DICTIONARY),
+		m_Dict(dict) { }
 	
 	ValueType GetType() const
 	{
@@ -123,14 +115,6 @@ public:
 
 private:
 
-	// friendship with containers allows them
-	// to access the default constructor
-	friend DictType;
-	friend ListType;
-
-	// default constructor intended for the containers
-	BValue() { m_Type = NONE; }
-
 	static BValue FromBEncodedString(const std::string &s, int &idx)
 	{		
 		switch (s[idx])
@@ -145,52 +129,54 @@ private:
 			case '7':
 			case '8':
 			case '9':
-				{
-					// string
-					int delim_pos = s.find_first_of(':', idx);
-					int len;
-					std::istringstream iss(s.substr(idx, delim_pos - idx));
-					iss >> len;					
-					idx += delim_pos - idx + len + 1;
-					return BValue(s.substr(delim_pos + 1, len));
-				}
+			{
+				// string
+				int delim_pos = s.find_first_of(':', idx);
+				int len;
+				std::istringstream iss(s.substr(idx, delim_pos - idx));
+				iss >> len;					
+				idx += delim_pos - idx + len;
+				idx++;
+				return s.substr(delim_pos + 1, len);
+			}
 			case 'i':
-				{
-					// integer
-					idx += 1;
-					int end = s.find_first_of('e', idx);					
-					std::istringstream iss(s.substr(idx, end - idx));
-					long long i;
-					iss >> i;
-					idx = end + 1;
-					return i;
-				}
+			{
+				// integer
+				idx += 1;
+				int end = s.find_first_of('e', idx);					
+				std::istringstream iss(s.substr(idx, end - idx));
+				long long i;
+				iss >> i;
+				idx = end;
+				idx++;
+				return i;
+			}
 			case 'l':
+			{
+				// list
+				idx += 1;
+				ListType list;
+				while (s[idx] != 'e')
 				{
-					// list
-					idx += 1;
-					ListType list;
-					while (s[idx] != 'e')
-					{
-						list.push_back(FromBEncodedString(s, idx));
-					}
-					idx++;
-					return BValue(list);
-				}				
-			case 'd':
-				{
-					// dictionary
-					idx += 1;
-					DictType dict;
-					while (s[idx] != 'e')
-					{
-						BValue key = FromBEncodedString(s, idx);
-						BValue val = FromBEncodedString(s, idx);
-						dict[key.GetString()] = val;
-					}
-					idx++;
-					return BValue(dict);
+					list.push_back(FromBEncodedString(s, idx));
 				}
+				idx++;
+				return list;
+			}
+			case 'd':
+			{
+				// dictionary
+				idx += 1;
+				DictType dict;
+				while (s[idx] != 'e')
+				{
+					BValue key = FromBEncodedString(s, idx);
+					BValue val = FromBEncodedString(s, idx);
+					dict.insert(std::make_pair(key.GetString(), val));
+				}
+				idx++;
+				return dict;
+			}
 			default:
 				// unknown bencoded type
 				assert(0);

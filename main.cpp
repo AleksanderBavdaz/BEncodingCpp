@@ -30,7 +30,7 @@ int main(int argc, char **argv)
 
 	// print out some info about the torrent
 	BValue::DictType root = d.GetDict();
-	cout << "announce-url: " << root["announce"].GetString() << endl;
+	cout << "announce-url: " << root.at("announce").GetString() << endl;
 	BValue::DictType::iterator it = root.find("announce-list");
 	if (it != root.end())
 	{
@@ -63,14 +63,14 @@ int main(int argc, char **argv)
 	{
 		cout << "encoding: " << it->second.GetString() << endl;
 	}
-	BValue::DictType info = root["info"].GetDict();
+	BValue::DictType info = root.at("info").GetDict();
 	cout << "info: " << endl;
-	cout << '\t' << "piece length: " << info["piece length"].GetInt() << endl;
-	// the pieces value is a string of concatendated sha1 hashes
+	cout << '\t' << "name: " << info.at("name").GetString() << endl;
+	cout << '\t' << "piece length: " << info.at("piece length").GetInt() << endl;
+	// the pieces value is a string of concatenated sha1 hashes
 	// we will just display the number of pieces, which we obtain
 	// by dividing the strings length through the length of a sha1 hash
-	cout << '\t' << "pieces: " << info["pieces"].GetString().length() / 20 << endl;
-	cout << '\t' << "name: " << info["name"].GetString() << endl;
+	cout << '\t' << "pieces: " << info.at("pieces").GetString().length() / 20 << endl;
 	it = info.find("private");
 	if (it != info.end())
 	{
@@ -81,6 +81,32 @@ int main(int argc, char **argv)
 	{
 		cout << '\t' << "source: " << it->second.GetString() << endl;
 	}
-	
+	it = info.find("files");
+	if (it != info.end())
+	{
+		// multi file
+		cout << "\t" << "files:" << endl;
+		BValue::ListType files_list = info.at("files").GetList();
+		BValue::ListType::iterator it;
+		for (it = files_list.begin(); it != files_list.end(); ++it)
+		{
+			BValue::DictType file = it->GetDict();
+			BValue::ListType path = file.at("path").GetList();
+			BValue::ListType::iterator it;
+			cout << "\t\t";
+			for (it = path.begin(); it != path.end(); ++it)
+			{
+				cout << '/' << it->GetString();
+			}
+			cout << endl;
+			cout << "\t\t" << "length: " << file.at("length").GetInt() << endl;
+		}
+	}
+	else
+	{
+		// single file
+		cout << '\t' << "length: " << info.at("length").GetInt() << endl;
+	}
+
 	return 0;
 }
