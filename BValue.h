@@ -16,7 +16,6 @@ public:
 
 	enum ValueType
 	{
-		NONE,
 		STRING,
 		INTEGER,
 		LIST,
@@ -71,7 +70,6 @@ public:
 	std::string ToBEncodedString() const
 	{
 		std::ostringstream oss;
-		assert(m_Type != NONE);		
 		switch (m_Type)
 		{
 			case STRING:
@@ -116,7 +114,7 @@ public:
 private:
 
 	static BValue FromBEncodedString(const std::string &s, int &idx)
-	{		
+	{
 		switch (s[idx])
 		{
 			case '0':
