@@ -6,6 +6,7 @@
 #include <map>
 #include <sstream>
 #include <cassert>
+#include <exception>
 
 class BValue
 {
@@ -176,8 +177,13 @@ private:
 				return dict;
 			}
 			default:
+			{
 				// unknown bencoded type
-				assert(0);
+				std::ostringstream oss;
+				oss << "unknown beginning delimiter '"
+					<< s[idx] << "' at position " << idx;
+				throw std::exception(oss.str().c_str());
+			}
 		}
 	}
 
