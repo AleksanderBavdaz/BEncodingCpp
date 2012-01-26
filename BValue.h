@@ -24,26 +24,29 @@ public:
 	};
 
 	BValue(const std::string &str) :
-		m_Type(STRING),
-		m_Str(str) { }
+		m_Str(str),
+		m_Type(STRING) { }
 
 	BValue(long long i) :
-		m_Type(INTEGER),
-		m_Int(i) { }
+		m_Int(i),
+		m_Type(INTEGER) { }
 
 	BValue(const ListType &list) :
-		m_Type(LIST),
-		m_List(list) { }
+		m_List(list),
+		m_Type(LIST) { }
 
 	BValue(const DictType &dict) :
-		m_Type(DICTIONARY),
-		m_Dict(dict) { }
+		m_Dict(dict),
+		m_Type(DICTIONARY) { }
 	
 	ValueType GetType() const
 	{
 		return m_Type;
 	}
 
+	// all getters return const references
+	// getting the wrong type causes a debug assertion failure
+	// in release a default constructed object is guaranteed	
 	const std::string &GetString() const
 	{
 		assert(m_Type == STRING);
@@ -116,6 +119,10 @@ private:
 
 	static BValue FromBEncodedString(const std::string &s, int &idx)
 	{
+		if (idx + 1 >= s.length())
+		{
+			throw std::exception("end of input encountered unexpectedly");
+		}
 		switch (s[idx])
 		{
 			case '0':
@@ -130,10 +137,22 @@ private:
 			case '9':
 			{
 				// string
-				int delim_pos = s.find_first_of(':', idx);
+				int delim_pos = s.find(':', idx + 1);
+				if (delim_pos == std::string::npos)
+				{
+					std::ostringstream oss;
+					oss << "delimiter for string starting at position "
+						<< idx << " was not found";
+					throw std::exception(oss.str().c_str());
+				}
 				int len;
 				std::istringstream iss(s.substr(idx, delim_pos - idx));
-				iss >> len;					
+				if (!(iss >> len))
+				{
+					std::ostringstream oss;
+					oss << "string at position " << idx << " has invalid length";
+					throw std::exception(oss.str().c_str());
+				}
 				idx += delim_pos - idx + len;
 				idx++;
 				return s.substr(delim_pos + 1, len);
@@ -142,10 +161,22 @@ private:
 			{
 				// integer
 				idx += 1;
-				int end = s.find_first_of('e', idx);					
+				int end = s.find('e', idx);
+				if (end == std::string::npos)
+				{
+					std::ostringstream oss;
+					oss << "ending delimiter for integer starting at position "
+						<< idx << " was not found";
+					throw std::exception(oss.str().c_str());
+				}
 				std::istringstream iss(s.substr(idx, end - idx));
 				long long i;
-				iss >> i;
+				if (!(iss >> i))
+				{
+					std::ostringstream oss;
+					oss << "integer at position " << idx << " is invalid";
+					throw std::exception(oss.str().c_str());
+				}
 				idx = end;
 				idx++;
 				return i;
@@ -158,6 +189,10 @@ private:
 				while (s[idx] != 'e')
 				{
 					list.push_back(FromBEncodedString(s, idx));
+					if (idx == s.length())
+					{
+						throw std::exception("end of input encountered in list");
+					}
 				}
 				idx++;
 				return list;
@@ -171,6 +206,10 @@ private:
 				{
 					BValue key = FromBEncodedString(s, idx);
 					BValue val = FromBEncodedString(s, idx);
+					if (idx == s.length())
+					{
+						throw std::exception("end of input encountered in map");
+					}
 					dict.insert(std::make_pair(key.GetString(), val));
 				}
 				idx++;
@@ -180,18 +219,18 @@ private:
 			{
 				// unknown bencoded type
 				std::ostringstream oss;
-				oss << "unknown beginning delimiter '"
-					<< s[idx] << "' at position " << idx;
+				oss << "unknown beginning delimiter '" << s[idx]
+					<< "' at position " << idx;
 				throw std::exception(oss.str().c_str());
 			}
 		}
 	}
-
-	ValueType m_Type;
-	std::string m_Str;
+		
 	long long m_Int;
+	std::string m_Str;	
 	ListType m_List;
 	DictType m_Dict;
+	ValueType m_Type;
 };
 
 #endif // BVALUE_H
