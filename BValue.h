@@ -153,15 +153,29 @@ private:
 					oss << "string at position " << idx << " has invalid length";
 					throw std::runtime_error(oss.str());
 				}
-				idx += delim_pos - idx + len;
-				idx++;
+				if (!iss.eof())
+				{
+					std::ostringstream oss;
+					oss << "string at position " << idx
+						<< " appears to have valid length " << len
+						<< " but has additional data before the delimiter";
+					throw std::runtime_error(oss.str());
+				}
+				if (delim_pos - idx + len >= s.length())
+				{
+					std::ostringstream oss;
+					oss << "string at position " << idx
+						<< " with length " << len
+						<< " would go outside of the input data bounds";
+					throw std::runtime_error(oss.str());
+				}
+				idx += delim_pos - idx + len + 1;
 				return s.substr(delim_pos + 1, len);
 			}
 			case 'i':
 			{
 				// integer
-				idx += 1;
-				int end = s.find('e', idx);
+				int end = s.find('e', idx + 1);
 				if (end == std::string::npos)
 				{
 					std::ostringstream oss;
@@ -169,7 +183,7 @@ private:
 						<< idx << " was not found";
 					throw std::runtime_error(oss.str());
 				}
-				std::istringstream iss(s.substr(idx, end - idx));
+				std::istringstream iss(s.substr(idx + 1, end - idx - 1));
 				long long i;
 				if (!(iss >> i))
 				{
@@ -177,14 +191,21 @@ private:
 					oss << "integer at position " << idx << " is invalid";
 					throw std::runtime_error(oss.str());
 				}
-				idx = end;
-				idx++;
+				if (!iss.eof())
+				{
+					std::ostringstream oss;
+					oss << "integer at position " << idx
+						<< " appears to be valid with value " << i
+						<< " but has additional trailing data";
+					throw std::runtime_error(oss.str());
+				}
+				idx = end + 1;
 				return i;
 			}
 			case 'l':
 			{
 				// list
-				idx += 1;
+				idx++;
 				ListType list;
 				while (s[idx] != 'e')
 				{
@@ -200,7 +221,7 @@ private:
 			case 'd':
 			{
 				// dictionary
-				idx += 1;
+				idx++;
 				DictType dict;
 				while (s[idx] != 'e')
 				{
