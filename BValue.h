@@ -161,7 +161,7 @@ private:
 						<< " but has additional data before the delimiter";
 					throw std::runtime_error(oss.str());
 				}
-				if (delim_pos + len > s.length())
+				if (delim_pos + len >= s.length())
 				{
 					std::ostringstream oss;
 					oss << "string at position " << idx
