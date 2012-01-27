@@ -121,7 +121,7 @@ private:
 	{
 		if (idx + 1 >= s.length())
 		{
-			throw std::exception("end of input encountered unexpectedly");
+			throw std::runtime_error("end of input encountered unexpectedly");
 		}
 		switch (s[idx])
 		{
@@ -143,7 +143,7 @@ private:
 					std::ostringstream oss;
 					oss << "delimiter for string starting at position "
 						<< idx << " was not found";
-					throw std::exception(oss.str().c_str());
+					throw std::runtime_error(oss.str());
 				}
 				int len;
 				std::istringstream iss(s.substr(idx, delim_pos - idx));
@@ -151,7 +151,7 @@ private:
 				{
 					std::ostringstream oss;
 					oss << "string at position " << idx << " has invalid length";
-					throw std::exception(oss.str().c_str());
+					throw std::runtime_error(oss.str());
 				}
 				idx += delim_pos - idx + len;
 				idx++;
@@ -167,7 +167,7 @@ private:
 					std::ostringstream oss;
 					oss << "ending delimiter for integer starting at position "
 						<< idx << " was not found";
-					throw std::exception(oss.str().c_str());
+					throw std::runtime_error(oss.str());
 				}
 				std::istringstream iss(s.substr(idx, end - idx));
 				long long i;
@@ -175,7 +175,7 @@ private:
 				{
 					std::ostringstream oss;
 					oss << "integer at position " << idx << " is invalid";
-					throw std::exception(oss.str().c_str());
+					throw std::runtime_error(oss.str());
 				}
 				idx = end;
 				idx++;
@@ -191,7 +191,7 @@ private:
 					list.push_back(FromBEncodedString(s, idx));
 					if (idx == s.length())
 					{
-						throw std::exception("end of input encountered in list");
+						throw std::runtime_error("end of input encountered in list");
 					}
 				}
 				idx++;
@@ -208,7 +208,7 @@ private:
 					BValue val = FromBEncodedString(s, idx);
 					if (idx == s.length())
 					{
-						throw std::exception("end of input encountered in map");
+						throw std::runtime_error("end of input encountered in map");
 					}
 					dict.insert(std::make_pair(key.GetString(), val));
 				}
@@ -221,7 +221,7 @@ private:
 				std::ostringstream oss;
 				oss << "unknown beginning delimiter '" << s[idx]
 					<< "' at position " << idx;
-				throw std::exception(oss.str().c_str());
+				throw std::runtime_error(oss.str());
 			}
 		}
 	}
