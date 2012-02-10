@@ -13,24 +13,19 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	// read in file
+	// open torrent file
 	ifstream file(argv[1], ios::binary);
 	if (!file)
 	{
 		cout << "Could not open file \"" << argv[1] << "\"." << endl;
 		return 1;
 	}
-	file.seekg(0, ios::end);
-	vector<char> v(file.tellg());
-	file.seekg(0);
-	file.read(v.data(), v.size());
 
-	// create a bvalue object from the data read
-	string s(v.begin(), v.end());	
+	// create a bvalue object
 	BValue b(0); // a little hack as we don't allow default construction
 	try
 	{
-		b = BValue::FromBEncodedString(s);
+		file >> b;
 	}
 	catch (const std::exception &exc)
 	{
@@ -39,7 +34,10 @@ int main(int argc, char **argv)
 	}
 
 	// assert that bencoding our object yields the original input
-	assert(s == b.ToBEncodedString());
+	std::vector<char> v(file.tellg());
+	file.seekg(0, std::ios::beg);
+	file.read(v.data(), v.size());
+	assert(std::string(v.begin(), v.end()) == b.ToBEncodedString());
 
 	// construct and print out some info about the torrent
 	Torrent torrent(b);

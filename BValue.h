@@ -19,7 +19,7 @@ public:
 		LIST,
 		DICTIONARY
 	};
-	
+
 	BValue(const std::string &str) :
 		m_pStr(new std::string(str)),
 		m_Type(STRING) { }
@@ -63,24 +63,26 @@ public:
 		static DictType d;
 		return m_Type == DICTIONARY ? *m_pDict : d;
 	}
-	
-	// bencode
-	std::string ToBEncodedString() const;
 
-	// bdecode, may throw std::runtime_error
-	static BValue FromBEncodedString(const std::string &s)
-	{
-		int idx = 0;
-		return FromBEncodedString(s, idx);
-	}
+	std::string ToBEncodedString() const;
+	static BValue FromBEncodedString(const std::string &s);
 
 private:
 
-	static BValue FromBEncodedString(const std::string &s, int &idx);
+	void ToBEncodedOStream(std::ostream &os) const;
+	friend std::ostream &operator<<(std::ostream &os, const BValue &b);
 
+	static BValue FromBEncodedIStream(std::istream &is);
+	friend std::istream &operator>>(std::istream &os, BValue &b);
+	
 	long long m_Int;
 	std::shared_ptr<std::string> m_pStr;
 	std::shared_ptr<ListType> m_pList;
 	std::shared_ptr<DictType> m_pDict;
 	ValueType m_Type;
 };
+
+// bencode
+std::ostream &operator<<(std::ostream &os, const BValue &b);
+// bdecode, may throw std::runtime_error
+std::istream &operator>>(std::istream &is, BValue &b);
