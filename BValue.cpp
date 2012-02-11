@@ -104,7 +104,7 @@ BValue BValue::FromBEncodedIStream(std::istream &is)
 					std::ostringstream oss;
 					oss << "integer starting at position " << pos
 						<< " has invalid ending delimiter '" << delim << "'";
-					std::runtime_error(oss.str());
+					throw std::runtime_error(oss.str());
 				}
 				return i;
 			}
@@ -126,6 +126,13 @@ BValue BValue::FromBEncodedIStream(std::istream &is)
 				while (is.peek() != 'e')
 				{
 					BValue key = FromBEncodedIStream(is);
+					if (key.m_Type != STRING)
+					{
+						std::ostringstream oss;
+						oss << "dictionary starting at position " << pos
+							<< " contains a key that is not a string";
+						throw std::runtime_error(oss.str());
+					}
 					BValue val = FromBEncodedIStream(is);
 					dict.insert(std::make_pair(key.GetString(), val));
 				}
