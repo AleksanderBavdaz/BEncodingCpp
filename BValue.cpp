@@ -5,13 +5,16 @@
 std::string BValue::ToBEncodedString() const
 {
 	std::ostringstream oss;
-	oss << *this;
+	ToBEncodedOStream(oss);
 	return oss.str();
 }
 
 BValue BValue::FromBEncodedString(const std::string &s)
 {
-	return FromBEncodedIStream(std::istringstream(s));
+	std::istringstream iss(s);
+	BValue b(0);
+	iss >> b;
+	return b;
 }
 
 void BValue::ToBEncodedOStream(std::ostream &os) const
@@ -48,110 +51,103 @@ void BValue::ToBEncodedOStream(std::ostream &os) const
 
 BValue BValue::FromBEncodedIStream(std::istream &is)
 {
-	try
+	int pos = is.tellg();
+	char type = is.get();
+	switch (type)
 	{
-		int pos = is.tellg();
-		char type = is.get();
-		switch (type)
+		case '0':
+		case '1':
+		case '2':
+		case '3':
+		case '4':
+		case '5':
+		case '6':
+		case '7':
+		case '8':
+		case '9':
 		{
-			case '0':
-			case '1':
-			case '2':
-			case '3':
-			case '4':
-			case '5':
-			case '6':
-			case '7':
-			case '8':
-			case '9':
+			// string
+			is.putback(type);
+			long long length;
+			if (!(is >> length))
 			{
-				// string
-				is.putback(type);
-				long long length;
-				if (!(is >> length))
-				{
-					std::ostringstream oss;
-					oss << "string starting at position " << pos
-						<< " has invalid length";
-					throw std::runtime_error(oss.str());
-				}
-				char delim = is.get();
-				if (delim != ':')
-				{
-					std::ostringstream oss;
-					oss << "string starting at position " << pos
-						<< " has invalid delimiter '" << delim << "'";
-					throw std::runtime_error(oss.str());
-				}
-				std::vector<char> v(length);
-				is.read(v.data(), v.size());
-				return std::string(v.begin(), v.end());
-			}
-			case 'i':
-			{
-				// integer
-				long long i;
-				if (!(is >> i))
-				{
-					std::ostringstream oss;
-					oss << "integer starting at position " << pos
-						<< " is invalid";
-					throw std::runtime_error(oss.str());
-				}
-				char delim = is.get();
-				if (delim != 'e')
-				{
-					std::ostringstream oss;
-					oss << "integer starting at position " << pos
-						<< " has invalid ending delimiter '" << delim << "'";
-					throw std::runtime_error(oss.str());
-				}
-				return i;
-			}
-			case 'l':
-			{
-				// list
-				ListType list;
-				while (is.peek() != 'e')
-				{
-					list.push_back(FromBEncodedIStream(is));
-				}
-				is.get();
-				return list;
-			}
-			case 'd':
-			{
-				// dictionary
-				DictType dict;
-				while (is.peek() != 'e')
-				{
-					BValue key = FromBEncodedIStream(is);
-					if (key.m_Type != STRING)
-					{
-						std::ostringstream oss;
-						oss << "dictionary starting at position " << pos
-							<< " contains a key that is not a string";
-						throw std::runtime_error(oss.str());
-					}
-					BValue val = FromBEncodedIStream(is);
-					dict.insert(std::make_pair(key.GetString(), val));
-				}
-				is.get();
-				return dict;
-			}
-			default:
-			{
-				// unknown bencoded type
 				std::ostringstream oss;
-				oss << "unknown beginning delimiter '" << type
-					<< "' at position " << pos;
+				oss << "string starting at position " << pos
+					<< " has invalid length";
 				throw std::runtime_error(oss.str());
 			}
+			char delim = is.get();
+			if (delim != ':')
+			{
+				std::ostringstream oss;
+				oss << "string starting at position " << pos
+					<< " has invalid delimiter '" << delim << "'";
+				throw std::runtime_error(oss.str());
+			}
+			std::vector<char> v(length);
+			is.read(v.data(), v.size());
+			return std::string(v.begin(), v.end());
 		}
-	}
-	catch (const std::istream::failure &exc)
-	{
-		throw std::runtime_error("encountered unexpected end of input");
+		case 'i':
+		{
+			// integer
+			long long i;
+			if (!(is >> i))
+			{
+				std::ostringstream oss;
+				oss << "integer starting at position " << pos
+					<< " is invalid";
+				throw std::runtime_error(oss.str());
+			}
+			char delim = is.get();
+			if (delim != 'e')
+			{
+				std::ostringstream oss;
+				oss << "integer starting at position " << pos
+					<< " has invalid ending delimiter '" << delim << "'";
+				throw std::runtime_error(oss.str());
+			}
+			return i;
+		}
+		case 'l':
+		{
+			// list
+			ListType list;
+			while (is.peek() != 'e')
+			{
+				list.push_back(FromBEncodedIStream(is));
+			}
+			is.get();
+			return list;
+		}
+		case 'd':
+		{
+			// dictionary
+			DictType dict;
+			while (is.peek() != 'e')
+			{
+				BValue key = FromBEncodedIStream(is);
+				if (key.m_Type != STRING)
+				{
+					std::ostringstream oss;
+					oss << "dictionary starting at position " << pos
+						<< " contains a key that is not a string";
+					throw std::runtime_error(oss.str());
+				}
+				BValue val = FromBEncodedIStream(is);
+				dict.insert(std::make_pair(key.GetString(), val));
+			}
+			is.get();
+			return dict;
+		}
+		default:
+		{
+			// unknown bencoded type
+			std::ostringstream oss;
+			oss << "unknown beginning delimiter '" << type
+				<< "' at position " << pos;
+			throw std::runtime_error(oss.str());
+		}
 	}
 }
 
@@ -165,7 +161,14 @@ std::istream &operator>>(std::istream &is, BValue &b)
 {
 	auto exceptions = is.exceptions();
 	is.exceptions(exceptions | std::ios::eofbit);
-	b = BValue::FromBEncodedIStream(is);
+	try
+	{
+		b = BValue::FromBEncodedIStream(is);
+	}
+	catch (const std::istream::failure &exc)
+	{
+		throw std::runtime_error("encountered unexpected end of input");
+	}
 	is.exceptions(exceptions);	
 	return is;
 }
